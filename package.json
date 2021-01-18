@@ -1,6 +1,6 @@
 {
   "name": "build-git-clone",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "clone repositories in the desired folder, allowing custom commands to be executed within the cloned repository",
   "main": "dist/index.js",
   "scripts": {
