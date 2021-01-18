@@ -17,7 +17,7 @@ function clone (
     folder: string,
     url: string,
     afterCommand: string | null = null,
-    options: object = { git = 'git' }
+    options: object = { git: 'git' }
 ): Promise<void>
 ```
 
