@@ -1,0 +1,32 @@
+{
+  "name": "build-git-clone",
+  "version": "1.0.0",
+  "description": "clone repositories in the desired folder, allowing custom commands to be executed within the cloned repository",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/emanuelmoraes-dev/build-git-clone.git"
+  },
+  "keywords": [
+    "git",
+    "clone",
+    "build"
+  ],
+  "author": "emanuelmoraes-dev",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/emanuelmoraes-dev/build-git-clone/issues"
+  },
+  "homepage": "https://github.com/emanuelmoraes-dev/build-git-clone#readme",
+  "dependencies": {
+    "rimraf": "^3.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^14.14.21",
+    "@types/rimraf": "^3.0.0",
+    "typescript": "^4.1.3"
+  }
+}

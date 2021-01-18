@@ -1,0 +1,21 @@
+{
+    "compilerOptions": {
+        "target": "es5",
+        "module": "commonjs",
+        "outDir": "dist",
+        "declaration": true,
+
+        "strict": true,
+        "noUnusedLocals": true,
+        "noImplicitReturns": true,
+        "noUnusedParameters": false,
+        "noImplicitAny": false,
+        "strictNullChecks": false,
+        // "experimentalDecorators": true,
+        // "emitDecoratorMetadata": true,
+
+        "esModuleInterop": true
+    },
+    "include": ["src/**/*"],
+    "exclude": ["node_modules", "**/*test.ts"]
+}
