@@ -54,6 +54,11 @@ async function clone (
         * StdioLog.IncludeSilent: ONLY includes in the return (stderr) the standard error output of the executed commands
         * StdioLog.Show: ONLY display in the console.log the standard error output of the executed commands
         * StdioLog.None: Does nothing with standard error output from commands executed
+    * internalLog: Defines what should be done with the logs generated internally (optional)
+        * StdioLog.IncludeShow: Include in the return (stdout) and display in the console.log the logs generated internally
+        * StdioLog.IncludeSilent: ONLY includes in the return (stdout) the logs generated internally
+        * StdioLog.Show: ONLY display in the console.log the logs generated internally
+        * StdioLog.None: Does nothing with the logs generated internally
 
 ### Return
 ```ts
