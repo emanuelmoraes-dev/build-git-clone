@@ -7,6 +7,9 @@ import { spawn } from 'child_process'
 import { promisify } from 'util'
 const mkdir = promisify(fs.mkdir)
 
+/**
+ * @deprecated will be removed in v2.
+ */
 function getStdioLogObj (stdioLog: StdioLog): StdioLogObj {
     return {
         include: (
@@ -21,6 +24,9 @@ function getStdioLogObj (stdioLog: StdioLog): StdioLogObj {
     }
 }
 
+/**
+ * @deprecated will be removed in v2. use `cloneRepo` instead.
+ */
 export async function clone (
 	folder: string,
 	url: string,
@@ -91,6 +97,9 @@ export async function clone (
 	}
 }
 
+/**
+ * @deprecated will be removed in v2.
+ */
 async function cloneCommand (
 	git: string,
 	url: string,
@@ -111,6 +120,9 @@ async function cloneCommand (
 	return resolveChildProcess(proc, stdoutLogObj, stderrLogObj)
 }
 
+/**
+ * @deprecated will be removed in v2.
+ */
 async function execAnyCommand (
 	command: string,
 	cwd: string,
