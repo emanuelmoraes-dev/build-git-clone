@@ -32,7 +32,7 @@ export async function clone (
 		stderrLog = StdioLog.IncludeShow,
 		internalLog = StdioLog.IncludeShow
 	} = {}
-): Promise<[(unknown | null), { stdout: string, stderr: string }]> {
+): Promise<[(Error | null), { stdout: string, stderr: string }]> {
 	const internalLogObj = getStdioLogObj(internalLog)
 
 	let stdout = ''
@@ -84,7 +84,7 @@ export async function clone (
 			stderr
 		}]
 	} catch (error) {
-		return [error, {
+		return [error as Error, {
 			stdout,
 			stderr
 		}]
