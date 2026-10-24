@@ -47,6 +47,9 @@ var utils_1 = require("./utils");
 var child_process_1 = require("child_process");
 var util_1 = require("util");
 var mkdir = (0, util_1.promisify)(fs_1.default.mkdir);
+/**
+ * @deprecated will be removed in v2.
+ */
 function getStdioLogObj(stdioLog) {
     return {
         include: (stdioLog === types_1.StdioLog.IncludeSilent ||
@@ -56,6 +59,9 @@ function getStdioLogObj(stdioLog) {
         none: stdioLog === types_1.StdioLog.None
     };
 }
+/**
+ * @deprecated will be removed in v2. use `cloneRepo` instead.
+ */
 function clone(folder, url, afterCommand, _a) {
     if (afterCommand === void 0) { afterCommand = null; }
     var _b = _a === void 0 ? {} : _a, _c = _b.git, git = _c === void 0 ? 'git' : _c, _d = _b.stdioInherit, stdioInherit = _d === void 0 ? true : _d, _e = _b.stdoutLog, stdoutLog = _e === void 0 ? types_1.StdioLog.IncludeShow : _e, _f = _b.stderrLog, stderrLog = _f === void 0 ? types_1.StdioLog.IncludeShow : _f, _g = _b.internalLog, internalLog = _g === void 0 ? types_1.StdioLog.IncludeShow : _g;
@@ -130,6 +136,9 @@ function clone(folder, url, afterCommand, _a) {
     });
 }
 exports.clone = clone;
+/**
+ * @deprecated will be removed in v2.
+ */
 function cloneCommand(git, url, dest, stdioInherit, stdoutLog, stderrLog) {
     return __awaiter(this, void 0, void 0, function () {
         var stdoutLogObj, stderrLogObj, options, proc;
@@ -144,6 +153,9 @@ function cloneCommand(git, url, dest, stdioInherit, stdoutLog, stderrLog) {
         });
     });
 }
+/**
+ * @deprecated will be removed in v2.
+ */
 function execAnyCommand(command, cwd, stdioInherit, stdoutLog, stderrLog) {
     return __awaiter(this, void 0, void 0, function () {
         var stdoutLogObj, stderrLogObj, program, args, options, proc;
