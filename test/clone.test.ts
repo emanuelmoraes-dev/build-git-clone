@@ -70,8 +70,8 @@ describe('clone', () => {
 		expect(error).toBeNull()
 		expect(spawnMock).toHaveBeenCalledWith(
 			'git',
-			['clone', '--', 'https://example.com/repo.git', join(testRoot, 'project')],
-			{ shell: false, stdio: 'inherit' }
+			['clone', '--', 'https://example.com/repo.git', '.'],
+			{ shell: false, cwd: join(testRoot, 'project'), stdio: 'inherit' }
 		)
 		expect(result.stdout).toContain('Cloning https://example.com/repo.git')
 		expect(result.stdout).toContain('cloned in')
@@ -94,8 +94,8 @@ describe('clone', () => {
 		expect(error).toBeNull()
 		expect(spawnMock).toHaveBeenCalledWith(
 			'git',
-			['clone', '--', 'https://example.com/repo.git', join(testRoot, 'project')],
-			{ shell: false }
+			['clone', '--', 'https://example.com/repo.git', '.'],
+			{ shell: false, cwd: join(testRoot, 'project') }
 		)
 		expect(result.stdout).toBe('git stdout')
 		expect(result.stderr).toBe('git stderr')

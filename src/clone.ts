@@ -102,15 +102,11 @@ async function cloneCommand (
 	const stdoutLogObj = getStdioLogObj(stdoutLog)
 	const stderrLogObj = getStdioLogObj(stderrLog)
 	
-	let options: any = {}
+	const options = stdioInherit
+		? { shell: false, cwd: dest, stdio: 'inherit' as const }
+		: { shell: false, cwd: dest }
 
-	if (stdioInherit) {
-		options = { shell: false, stdio: 'inherit' }
-	} else {
-		options = { shell: false }
-	}
-
-	const proc = spawn(git, ['clone', '--', url, dest], options)
+	const proc = spawn(git, ['clone', '--', url, '.'], options)
 
 	return resolveChildProcess(proc, stdoutLogObj, stderrLogObj)
 }

@@ -136,14 +136,10 @@ function cloneCommand(git, url, dest, stdioInherit, stdoutLog, stderrLog) {
         return __generator(this, function (_a) {
             stdoutLogObj = getStdioLogObj(stdoutLog);
             stderrLogObj = getStdioLogObj(stderrLog);
-            options = {};
-            if (stdioInherit) {
-                options = { shell: false, stdio: 'inherit' };
-            }
-            else {
-                options = { shell: false };
-            }
-            proc = (0, child_process_1.spawn)(git, ['clone', '--', url, dest], options);
+            options = stdioInherit
+                ? { shell: false, cwd: dest, stdio: 'inherit' }
+                : { shell: false, cwd: dest };
+            proc = (0, child_process_1.spawn)(git, ['clone', '--', url, '.'], options);
             return [2 /*return*/, (0, utils_1.resolveChildProcess)(proc, stdoutLogObj, stderrLogObj)];
         });
     });
