@@ -41,7 +41,7 @@ function createChildProcess (
 	return child as unknown as ChildProcess
 }
 
-describe('clone', () => {
+describe('legacy clone', () => {
 	let originalCwd: string
 	let testRoot: string
 
