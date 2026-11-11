@@ -35,6 +35,7 @@ The current API for cloning a repository. It does not run a post-clone command.
 cloneRepo(folder: string, url: string, options?: {
     git?: string
     stdioInherit?: 'none' | 'stdin' | 'all'
+    recreateFolderIfExists?: boolean
     stdoutLog?: StdioLog
     stderrLog?: StdioLog
     internalLog?: StdioLog
@@ -43,9 +44,10 @@ cloneRepo(folder: string, url: string, options?: {
 
 Arguments:
 
-* `folder`: Destination folder, relative to the current working directory.
+* `folder`: Destination folder, relative to the current working directory. By default, the library does not remove or recreate it; Git handles the destination and reports an error if it cannot clone there.
 * `url`: Repository URL passed to Git.
 * `git`: Git executable to run. Defaults to `git`.
+* `recreateFolderIfExists`: Defaults to `false`. When `true`, an existing destination directory is removed and recreated before cloning. This deletes its current contents.
 * `stdioInherit`: Controls which standard streams are inherited by Git. Defaults to `'none'`.
     * `'none'`: Inherit no streams. Git output is captured and handled according to `stdoutLog` and `stderrLog`.
     * `'stdin'`: Inherit stdin for interactive prompts; capture stdout and stderr for logging and the return value.
@@ -90,6 +92,18 @@ The legacy function also accepts `git`, `stdioInherit`, `stdoutLog`, `stderrLog`
 const [error, { stdout, stderr }] = await clone(folder, url, afterCommand, options)
 ```
 
+### Migrating from `clone` to `cloneRepo`
+
+`cloneRepo` is not a drop-in replacement for the deprecated function. Review these behavior differences when migrating:
+
+* **Standard streams:** The legacy `stdioInherit: true` maps to `stdioInherit: 'all'`; `false` maps to `'none'`. Use `'stdin'` when Git needs interactive input while stdout and stderr should remain captured. In `'all'` mode, `cloneRepo` may return its internal status messages, but it does not display thems, even if `internalLog` is set to `StdioLog.IncludeShow`.
+* **Logging defaults:** The legacy function defaults to `StdioLog.IncludeShow`; `cloneRepo` defaults to `StdioLog.IncludeSilent`. Set `stdoutLog`, `stderrLog`, and `internalLog` explicitly if you want output displayed as well as returned.
+* **Displayed stderr:** The legacy function writes both displayed stdout and stderr to `process.stdout`. `cloneRepo` writes stderr to `process.stderr`; there is no option to restore the legacy routing.
+* **Existing destination:** The legacy function removes and recreates an existing destination. `cloneRepo` leaves it alone by default; set `recreateFolderIfExists: true` only when deleting its existing contents is intended.
+* **Post-clone commands:** `cloneRepo` has no `afterCommand`. Run the command separately after cloning succeeds, with the cloned folder as its working directory.
+* **Failed processes:** `cloneRepo` returns captured stdout and stderr in the result even when a child process fails. The legacy function does not include that failed process's captured output in the returned strings; captured stderr may instead be included in `error` when `stderrLog` includes output.
+* **Git progress text:** The legacy function clones into `.` from inside the destination, while `cloneRepo` passes the destination path to Git. Git's progress message may therefore differ; its exact wording is not stable.
+
 ## Input Handling
 
 If your application accepts repository URLs from users, validate them according to the hosts and protocols your application intends to support.
@@ -104,4 +118,9 @@ Both functions return a tuple:
 [error, { stdout, stderr }]
 ```
 
-`error` is `null` when the operation succeeds and contains the failure otherwise. `stdout` and `stderr` contain captured process output according to the selected options; output sent directly to the terminal using inherited streams cannot be captured.
+`error` is `null` when the operation succeeds and contains the failure otherwise. The tuple shape is the same for both functions, but captured output on failure differs:
+
+* `cloneRepo` keeps captured stdout and stderr from a child process in the returned object, even if that process fails.
+* The deprecated `clone` does not add output from the child process that failed to the returned strings. Its error may contain that process's stderr when `stderrLog` is set to an including mode. Output already collected from earlier successful steps may still be present in the returned strings.
+
+For both functions, output sent directly to the terminal using inherited streams cannot be captured.

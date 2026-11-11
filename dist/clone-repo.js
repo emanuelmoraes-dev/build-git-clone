@@ -47,6 +47,7 @@ var utils_1 = require("./utils");
 var util_1 = require("util");
 var child_process_1 = require("child_process");
 var mkdir = (0, util_1.promisify)(fs_1.default.mkdir);
+var lstat = (0, util_1.promisify)(fs_1.default.lstat);
 function buildStdioLogObj(stdioLog, inheritAll) {
     return {
         include: (stdioLog === types_1.StdioLog.IncludeSilent ||
@@ -57,113 +58,108 @@ function buildStdioLogObj(stdioLog, inheritAll) {
     };
 }
 function cloneRepo(folder, url, _a) {
-    var _b = _a === void 0 ? {} : _a, _c = _b.git, git = _c === void 0 ? 'git' : _c, _d = _b.stdioInherit, stdioInherit = _d === void 0 ? 'none' : _d, _e = _b.stdoutLog, stdoutLog = _e === void 0 ? types_1.StdioLog.IncludeSilent : _e, _f = _b.stderrLog, stderrLog = _f === void 0 ? types_1.StdioLog.IncludeSilent : _f, _g = _b.internalLog, internalLog = _g === void 0 ? types_1.StdioLog.IncludeSilent : _g;
+    var _b = _a === void 0 ? {} : _a, _c = _b.git, git = _c === void 0 ? 'git' : _c, _d = _b.stdioInherit, stdioInherit = _d === void 0 ? 'none' : _d, _e = _b.recreateFolderIfExists, recreateFolderIfExists = _e === void 0 ? false : _e, _f = _b.stdoutLog, stdoutLog = _f === void 0 ? types_1.StdioLog.IncludeSilent : _f, _g = _b.stderrLog, stderrLog = _g === void 0 ? types_1.StdioLog.IncludeSilent : _g, _h = _b.internalLog, internalLog = _h === void 0 ? types_1.StdioLog.IncludeSilent : _h;
     return __awaiter(this, void 0, void 0, function () {
-        var stdoutLogObj, stderrLogObj, internalLogObj, stdout, stderr, pathResponse, path, cloneResponse, error_1;
-        return __generator(this, function (_h) {
-            switch (_h.label) {
+        var stdoutLogObj, stderrLogObj, internalLogObj, output, pathResponse, path, error_1;
+        return __generator(this, function (_j) {
+            switch (_j.label) {
                 case 0:
                     stdoutLogObj = buildStdioLogObj(stdoutLog, stdioInherit === 'all');
                     stderrLogObj = buildStdioLogObj(stderrLog, stdioInherit === 'all');
                     internalLogObj = buildStdioLogObj(internalLog, stdioInherit === 'all');
-                    stdout = '';
-                    stderr = '';
-                    _h.label = 1;
+                    output = { stdout: '', stderr: '' };
+                    _j.label = 1;
                 case 1:
-                    _h.trys.push([1, 4, , 5]);
-                    return [4 /*yield*/, resolvePath(folder, internalLogObj)];
+                    _j.trys.push([1, 4, , 5]);
+                    return [4 /*yield*/, resolvePath(folder, internalLogObj, recreateFolderIfExists)];
                 case 2:
-                    pathResponse = _h.sent();
+                    pathResponse = _j.sent();
                     path = pathResponse.path;
-                    stdout += pathResponse.stdout;
-                    return [4 /*yield*/, resolveGitClone(git, url, path, stdioInherit, internalLogObj, stdoutLogObj, stderrLogObj)];
+                    output.stdout += pathResponse.stdout;
+                    return [4 /*yield*/, resolveGitClone(git, url, path, stdioInherit, internalLogObj, stdoutLogObj, stderrLogObj, output)];
                 case 3:
-                    cloneResponse = _h.sent();
-                    stdout += cloneResponse.stdout;
-                    stderr += cloneResponse.stderr;
-                    return [2 /*return*/, [null, {
-                                stdout: stdout,
-                                stderr: stderr
-                            }]];
+                    _j.sent();
+                    return [2 /*return*/, [null, output]];
                 case 4:
-                    error_1 = _h.sent();
-                    return [2 /*return*/, [error_1, {
-                                stdout: stdout,
-                                stderr: stderr
-                            }]];
+                    error_1 = _j.sent();
+                    return [2 /*return*/, [error_1, output]];
                 case 5: return [2 /*return*/];
             }
         });
     });
 }
 exports.cloneRepo = cloneRepo;
-function resolvePath(folder, internalLogObj) {
+function resolvePath(folder, internalLogObj, recreateFolderIfExists) {
     return __awaiter(this, void 0, void 0, function () {
-        var stdout, path, _1, _a;
+        var stdout, path, stats, _a, error_2;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
                     stdout = '';
                     path = (0, path_1.join)((0, path_1.resolve)(), folder);
+                    if (!recreateFolderIfExists)
+                        return [2 /*return*/, { path: path, stdout: stdout }];
+                    _b.label = 1;
+                case 1:
+                    _b.trys.push([1, 4, , 6]);
+                    return [4 /*yield*/, lstat(path)];
+                case 2:
+                    stats = _b.sent();
+                    if (!stats.isDirectory())
+                        throw new Error("Destination exists and is not a directory: ".concat(path));
+                    _a = stdout;
+                    return [4 /*yield*/, (0, utils_1.recreate)(path, internalLogObj)];
+                case 3:
+                    stdout = _a + _b.sent();
+                    return [3 /*break*/, 6];
+                case 4:
+                    error_2 = _b.sent();
+                    if (error_2.code !== 'ENOENT')
+                        throw error_2;
                     if (internalLogObj.show)
                         console.log('Creating', path, '...');
                     if (internalLogObj.include)
                         stdout += "Creating ".concat(path, " ...\n");
-                    _b.label = 1;
-                case 1:
-                    _b.trys.push([1, 3, , 5]);
                     return [4 /*yield*/, mkdir(path)];
-                case 2:
+                case 5:
                     _b.sent();
                     if (internalLogObj.show)
                         console.log(path, 'created.');
                     if (internalLogObj.include)
                         stdout += "".concat(path, " created.\n");
-                    return [3 /*break*/, 5];
-                case 3:
-                    _1 = _b.sent();
-                    _a = stdout;
-                    return [4 /*yield*/, (0, utils_1.recreate)(path, internalLogObj)];
-                case 4:
-                    stdout = _a + _b.sent();
-                    return [3 /*break*/, 5];
-                case 5: return [2 /*return*/, { path: path, stdout: stdout }];
+                    return [3 /*break*/, 6];
+                case 6: return [2 /*return*/, { path: path, stdout: stdout }];
             }
         });
     });
 }
-function resolveGitClone(git, url, path, stdioInherit, internalLogObj, stdoutLogObj, stderrLogObj) {
+function resolveGitClone(git, url, path, stdioInherit, internalLogObj, stdoutLogObj, stderrLogObj, output) {
     return __awaiter(this, void 0, void 0, function () {
-        var stdout, stderr, response;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    stdout = '';
-                    stderr = '';
                     if (internalLogObj.show)
                         console.log('Cloning', url, '...\n');
                     if (internalLogObj.include)
-                        stdout += "Cloning ".concat(url, " ...\n\n");
-                    return [4 /*yield*/, execGitClone(git, url, path, stdioInherit, stdoutLogObj, stderrLogObj)];
+                        output.stdout += "Cloning ".concat(url, " ...\n\n");
+                    return [4 /*yield*/, execGitClone(git, url, path, stdioInherit, stdoutLogObj, stderrLogObj, output)];
                 case 1:
-                    response = _a.sent();
-                    stdout += response.stdout;
-                    stderr += response.stderr;
+                    _a.sent();
                     if (internalLogObj.show)
                         console.log('\n' + url, 'cloned in', path);
                     if (internalLogObj.include)
-                        stdout += "\n".concat(url, " cloned in ").concat(path, ".\n");
-                    return [2 /*return*/, { stdout: stdout, stderr: stderr }];
+                        output.stdout += "\n".concat(url, " cloned in ").concat(path, ".\n");
+                    return [2 /*return*/];
             }
         });
     });
 }
-function execGitClone(git, url, dest, stdioInherit, stdoutLogObj, stderrLogObj) {
+function execGitClone(git, url, dest, stdioInherit, stdoutLogObj, stderrLogObj, output) {
     var args = ['clone', '--', url, dest];
     var proc = stdioInherit === 'all'
         ? (0, child_process_1.spawn)(git, args, { shell: false, stdio: 'inherit' })
         : stdioInherit === 'stdin'
             ? (0, child_process_1.spawn)(git, args, { shell: false, stdio: ['inherit', 'pipe', 'pipe'] })
             : (0, child_process_1.execFile)(git, args, { shell: false });
-    return (0, utils_1.resolveChildProcess)(proc, stdoutLogObj, stderrLogObj, process.stdout, process.stderr);
+    return (0, utils_1.resolveChildProcess)(proc, stdoutLogObj, stderrLogObj, output, process.stdout, process.stderr);
 }

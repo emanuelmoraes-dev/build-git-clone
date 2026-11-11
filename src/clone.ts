@@ -1,7 +1,7 @@
 import fs from 'fs'
 import { join, resolve } from 'path'
 import { StdioLog, StdioLogObj } from './types'
-import { resolveChildProcess, recreate } from './utils'
+import { ChildProcessOutput, resolveChildProcess, recreate } from './utils'
 import { spawn } from 'child_process'
 
 import { promisify } from 'util'
@@ -110,6 +110,7 @@ async function cloneCommand (
 ): Promise<{ stdout: string, stderr: string }> {
 	const stdoutLogObj = getStdioLogObj(stdoutLog)
 	const stderrLogObj = getStdioLogObj(stderrLog)
+	const output: ChildProcessOutput = { stdout: '', stderr: '' }
 	
 	const options = stdioInherit
 		? { shell: false, cwd: dest, stdio: 'inherit' as const }
@@ -117,7 +118,8 @@ async function cloneCommand (
 
 	const proc = spawn(git, ['clone', '--', url, '.'], options)
 
-	return resolveChildProcess(proc, stdoutLogObj, stderrLogObj)
+	await resolveChildProcess(proc, stdoutLogObj, stderrLogObj, output)
+	return output
 }
 
 /**
@@ -132,6 +134,7 @@ async function execAnyCommand (
 ): Promise<{ stdout: string, stderr: string }> {
 	const stdoutLogObj = getStdioLogObj(stdoutLog)
 	const stderrLogObj = getStdioLogObj(stderrLog)
+	const output: ChildProcessOutput = { stdout: '', stderr: '' }
 
 	let program: string
 	let args: Array<string>
@@ -154,5 +157,6 @@ async function execAnyCommand (
 
 	const proc = spawn(program, args, options)
 
-	return resolveChildProcess(proc, stdoutLogObj, stderrLogObj)
+	await resolveChildProcess(proc, stdoutLogObj, stderrLogObj, output)
+	return output
 }

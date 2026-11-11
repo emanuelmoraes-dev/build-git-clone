@@ -1,11 +1,12 @@
 import fs from 'fs'
 import { join, resolve } from 'path'
 import { StdioLog, StdioLogObj } from './types'
-import { recreate, resolveChildProcess } from './utils'
+import { ChildProcessOutput, recreate, resolveChildProcess } from './utils'
 
 import { promisify } from 'util'
 import { execFile, spawn } from 'child_process'
 const mkdir = promisify(fs.mkdir)
+const lstat = promisify(fs.lstat)
 
 type StdioInherit = 'none' | 'stdin' | 'all'
 
@@ -29,6 +30,7 @@ export async function cloneRepo (
     {
         git = 'git',
         stdioInherit = 'none' as StdioInherit,
+        recreateFolderIfExists = false,
         stdoutLog = StdioLog.IncludeSilent,
         stderrLog = StdioLog.IncludeSilent,
         internalLog = StdioLog.IncludeSilent
@@ -38,48 +40,49 @@ export async function cloneRepo (
     const stderrLogObj = buildStdioLogObj(stderrLog, stdioInherit === 'all')
     const internalLogObj = buildStdioLogObj(internalLog, stdioInherit === 'all')
 
-    let stdout = ''
-    let stderr = ''
+    const output: ChildProcessOutput = { stdout: '', stderr: '' }
 
     try {
-        const pathResponse = await resolvePath(folder, internalLogObj)
+        const pathResponse = await resolvePath(folder, internalLogObj, recreateFolderIfExists)
         const path = pathResponse.path
-        stdout += pathResponse.stdout
+        output.stdout += pathResponse.stdout
 
-        const cloneResponse = await resolveGitClone(git, url, path, stdioInherit, internalLogObj, stdoutLogObj, stderrLogObj)
-        stdout += cloneResponse.stdout
-        stderr += cloneResponse.stderr
+        await resolveGitClone(git, url, path, stdioInherit, internalLogObj, stdoutLogObj, stderrLogObj, output)
 
-        return [null, {
-            stdout,
-            stderr
-        }]
+        return [null, output]
     } catch (error) {
-        return [error, {
-            stdout,
-            stderr
-        }]
+        return [error, output]
     }
 }
 
-async function resolvePath (folder: string, internalLogObj: StdioLogObj) {
+async function resolvePath (folder: string, internalLogObj: StdioLogObj, recreateFolderIfExists: boolean) {
     let stdout = ''
     const path = join(resolve(), folder)
 
-    if (internalLogObj.show)
-        console.log('Creating', path, '...')
-    if (internalLogObj.include)
-        stdout += `Creating ${path} ...\n`
+    if (!recreateFolderIfExists)
+        return { path, stdout }
 
     try {
+        const stats = await lstat(path)
+        if (!stats.isDirectory())
+            throw new Error(`Destination exists and is not a directory: ${path}`)
+
+        stdout += await recreate(path, internalLogObj)
+    } catch (error) {
+        if (typeof error === 'object' && (error as NodeJS.ErrnoException)?.code !== 'ENOENT')
+            throw error
+
+        if (internalLogObj.show)
+            console.log('Creating', path, '...')
+        if (internalLogObj.include)
+            stdout += `Creating ${path} ...\n`
+
         await mkdir(path)
 
         if (internalLogObj.show)
             console.log(path, 'created.')
         if (internalLogObj.include)
             stdout += `${path} created.\n`
-    } catch (_) {
-        stdout += await recreate(path, internalLogObj)
     }
 
     return { path, stdout }
@@ -92,26 +95,20 @@ async function resolveGitClone (
     stdioInherit: StdioInherit,
     internalLogObj: StdioLogObj,
 	stdoutLogObj: StdioLogObj,
-	stderrLogObj: StdioLogObj
+    stderrLogObj: StdioLogObj,
+    output: ChildProcessOutput
 ) {
-    let stdout = ''
-    let stderr = ''
-
     if (internalLogObj.show)
         console.log('Cloning', url, '...\n')
     if (internalLogObj.include)
-        stdout += `Cloning ${url} ...\n\n`
+        output.stdout += `Cloning ${url} ...\n\n`
 
-    const response = await execGitClone(git, url, path, stdioInherit, stdoutLogObj, stderrLogObj)
-    stdout += response.stdout
-    stderr += response.stderr
+    await execGitClone(git, url, path, stdioInherit, stdoutLogObj, stderrLogObj, output)
 
     if (internalLogObj.show)
         console.log('\n' + url, 'cloned in', path)
     if (internalLogObj.include)
-        stdout += `\n${url} cloned in ${path}.\n`
-
-    return { stdout, stderr }
+        output.stdout += `\n${url} cloned in ${path}.\n`
 }
 
 function execGitClone (
@@ -120,7 +117,8 @@ function execGitClone (
 	dest: string,
     stdioInherit: StdioInherit,
 	stdoutLogObj: StdioLogObj,
-	stderrLogObj: StdioLogObj
+    stderrLogObj: StdioLogObj,
+    output: ChildProcessOutput
 ) {
     const args = ['clone', '--', url, dest]
     let proc = stdioInherit === 'all'
@@ -128,6 +126,5 @@ function execGitClone (
         : stdioInherit === 'stdin'
             ? spawn(git, args, { shell: false, stdio: ['inherit', 'pipe', 'pipe'] })
             : execFile(git, args, { shell: false })
-    return resolveChildProcess(proc, stdoutLogObj, stderrLogObj, process.stdout, process.stderr)
+    return resolveChildProcess(proc, stdoutLogObj, stderrLogObj, output, process.stdout, process.stderr)
 }
-

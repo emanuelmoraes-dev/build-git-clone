@@ -141,15 +141,22 @@ exports.clone = clone;
  */
 function cloneCommand(git, url, dest, stdioInherit, stdoutLog, stderrLog) {
     return __awaiter(this, void 0, void 0, function () {
-        var stdoutLogObj, stderrLogObj, options, proc;
+        var stdoutLogObj, stderrLogObj, output, options, proc;
         return __generator(this, function (_a) {
-            stdoutLogObj = getStdioLogObj(stdoutLog);
-            stderrLogObj = getStdioLogObj(stderrLog);
-            options = stdioInherit
-                ? { shell: false, cwd: dest, stdio: 'inherit' }
-                : { shell: false, cwd: dest };
-            proc = (0, child_process_1.spawn)(git, ['clone', '--', url, '.'], options);
-            return [2 /*return*/, (0, utils_1.resolveChildProcess)(proc, stdoutLogObj, stderrLogObj)];
+            switch (_a.label) {
+                case 0:
+                    stdoutLogObj = getStdioLogObj(stdoutLog);
+                    stderrLogObj = getStdioLogObj(stderrLog);
+                    output = { stdout: '', stderr: '' };
+                    options = stdioInherit
+                        ? { shell: false, cwd: dest, stdio: 'inherit' }
+                        : { shell: false, cwd: dest };
+                    proc = (0, child_process_1.spawn)(git, ['clone', '--', url, '.'], options);
+                    return [4 /*yield*/, (0, utils_1.resolveChildProcess)(proc, stdoutLogObj, stderrLogObj, output)];
+                case 1:
+                    _a.sent();
+                    return [2 /*return*/, output];
+            }
         });
     });
 }
@@ -158,27 +165,34 @@ function cloneCommand(git, url, dest, stdioInherit, stdoutLog, stderrLog) {
  */
 function execAnyCommand(command, cwd, stdioInherit, stdoutLog, stderrLog) {
     return __awaiter(this, void 0, void 0, function () {
-        var stdoutLogObj, stderrLogObj, program, args, options, proc;
+        var stdoutLogObj, stderrLogObj, output, program, args, options, proc;
         return __generator(this, function (_a) {
-            stdoutLogObj = getStdioLogObj(stdoutLog);
-            stderrLogObj = getStdioLogObj(stderrLog);
-            if (process.platform === 'win32') {
-                program = 'cmd';
-                args = ['/C', command];
+            switch (_a.label) {
+                case 0:
+                    stdoutLogObj = getStdioLogObj(stdoutLog);
+                    stderrLogObj = getStdioLogObj(stderrLog);
+                    output = { stdout: '', stderr: '' };
+                    if (process.platform === 'win32') {
+                        program = 'cmd';
+                        args = ['/C', command];
+                    }
+                    else {
+                        program = 'sh';
+                        args = ['-c', command];
+                    }
+                    options = {};
+                    if (stdioInherit) {
+                        options = { cwd: cwd, stdio: 'inherit' };
+                    }
+                    else {
+                        options = { cwd: cwd };
+                    }
+                    proc = (0, child_process_1.spawn)(program, args, options);
+                    return [4 /*yield*/, (0, utils_1.resolveChildProcess)(proc, stdoutLogObj, stderrLogObj, output)];
+                case 1:
+                    _a.sent();
+                    return [2 /*return*/, output];
             }
-            else {
-                program = 'sh';
-                args = ['-c', command];
-            }
-            options = {};
-            if (stdioInherit) {
-                options = { cwd: cwd, stdio: 'inherit' };
-            }
-            else {
-                options = { cwd: cwd };
-            }
-            proc = (0, child_process_1.spawn)(program, args, options);
-            return [2 /*return*/, (0, utils_1.resolveChildProcess)(proc, stdoutLogObj, stderrLogObj)];
         });
     });
 }

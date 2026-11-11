@@ -174,13 +174,15 @@ describe('legacy clone', () => {
 	it('returns a process failure in the error tuple element', async () => {
 		spawnMock.mockReturnValueOnce(createChildProcess('', 'clone failed', 1))
 
-		const [error] = await clone('project', 'https://example.com/repo.git', null, {
+		const [error, result] = await clone('project', 'https://example.com/repo.git', null, {
 			stdioInherit: false,
 			internalLog: StdioLog.None
 		})
 
 		expect(error).toBeInstanceOf(Error)
 		expect(error?.message).toBe('clone failed\nCode 1')
+		expect(result.stdout).toBe('')
+		expect(result.stderr).toBe('')
 	})
 
 	it('preserves non-Error values thrown by dependencies', async () => {

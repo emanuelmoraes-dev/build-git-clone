@@ -67,14 +67,12 @@ function recreate(path, internalLogObj) {
     });
 }
 exports.recreate = recreate;
-function resolveChildProcess(proc, stdoutLogObj, stderrLogObj, stdoutTarget, stderrTarget) {
+function resolveChildProcess(proc, stdoutLogObj, stderrLogObj, output, stdoutTarget, stderrTarget) {
     if (stdoutTarget === void 0) { stdoutTarget = process.stdout; }
     if (stderrTarget === void 0) { stderrTarget = process.stdout; }
     return new Promise(function (resolve, reject) {
         var _a, _b;
         var error = null;
-        var stderr = '';
-        var stdout = '';
         proc.on('error', function (err) {
             error = err;
         });
@@ -83,24 +81,21 @@ function resolveChildProcess(proc, stdoutLogObj, stderrLogObj, stdoutTarget, std
             if (stderrLogObj.show)
                 stderrTarget.write(str);
             if (stderrLogObj.include)
-                stderr += "".concat(str);
+                output.stderr += str;
         });
         (_b = proc.stdout) === null || _b === void 0 ? void 0 : _b.on('data', function (out) {
             var str = out.toString();
             if (stdoutLogObj.show)
                 stdoutTarget.write(str);
             if (stdoutLogObj.include)
-                stdout += "".concat(str);
+                output.stdout += str;
         });
         proc.on('close', function (code) {
-            if (code) {
-                reject(error || new Error("".concat(stderr, "\nCode ").concat(code)));
+            if (error || code !== 0) {
+                reject(error || new Error("".concat(output.stderr, "\nCode ").concat(code)));
             }
             else {
-                resolve({
-                    stderr: stderr,
-                    stdout: stdout
-                });
+                resolve();
             }
         });
     });

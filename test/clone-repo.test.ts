@@ -1,6 +1,6 @@
 import { ChildProcess, execFile, spawn } from 'child_process'
 import { EventEmitter } from 'events'
-import { mkdtempSync, rmSync } from 'fs'
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { PassThrough } from 'stream'
@@ -24,7 +24,8 @@ function createChildProcess (
 	stdout: string,
 	stderr: string,
 	code = 0,
-	inherited = false
+	inherited = false,
+	processError?: Error
 ): ChildProcess {
 	const child = new EventEmitter() as unknown as MockChildProcess
 	child.stdout = inherited ? null : new PassThrough()
@@ -35,7 +36,9 @@ function createChildProcess (
 			setImmediate(() => {
 				child.stdout?.emit('data', Buffer.from(stdout))
 				child.stderr?.emit('data', Buffer.from(stderr))
-				child.emit('close', code, null)
+				if (processError)
+					child.emit('error', processError)
+				child.emit('close', processError ? null : code, null)
 			})
 		}
 	})
@@ -153,6 +156,50 @@ describe('cloneRepo', () => {
 		expect(result.stderr).toBe('')
 	})
 
+	it('does not remove a non-empty destination by default and returns output on Git failure', async () => {
+		const destination = join(testRoot, 'project')
+		const existingFile = join(destination, 'keep.txt')
+		mkdirSync(destination)
+		writeFileSync(existingFile, 'keep')
+		execFileMock.mockReturnValueOnce(createChildProcess('partial stdout', 'destination is not empty', 1))
+
+		const [error, result] = await cloneRepo('project', 'https://example.com/repo.git', {
+			internalLog: StdioLog.None
+		})
+
+		expect(error).toBeInstanceOf(Error)
+		expect(existsSync(existingFile)).toBe(true)
+		expect(execFileMock).toHaveBeenCalledWith(
+			'git',
+			['clone', '--', 'https://example.com/repo.git', destination],
+			{ shell: false }
+		)
+		expect(result.stdout).toBe('partial stdout')
+		expect(result.stderr).toBe('destination is not empty')
+	})
+
+	it('recreates an existing destination only when explicitly requested', async () => {
+		const destination = join(testRoot, 'project')
+		const existingFile = join(destination, 'remove-me.txt')
+		mkdirSync(destination)
+		writeFileSync(existingFile, 'remove')
+		execFileMock.mockReturnValueOnce(createChildProcess('git stdout', ''))
+
+		const [error] = await cloneRepo('project', 'https://example.com/repo.git', {
+			recreateFolderIfExists: true,
+			internalLog: StdioLog.None
+		})
+
+		expect(error).toBeNull()
+		expect(existsSync(destination)).toBe(true)
+		expect(existsSync(existingFile)).toBe(false)
+		expect(execFileMock).toHaveBeenCalledWith(
+			'git',
+			['clone', '--', 'https://example.com/repo.git', destination],
+			{ shell: false }
+		)
+	})
+
 	it('writes displayed stdout and stderr to their corresponding process streams', async () => {
 		execFileMock.mockReturnValueOnce(createChildProcess('git stdout', 'git stderr'))
 		const stdoutWrite = jest.spyOn(process.stdout, 'write').mockImplementation(() => true)
@@ -171,8 +218,8 @@ describe('cloneRepo', () => {
 		expect(stderrWrite).toHaveBeenCalledWith('git stderr')
 	})
 
-	it('returns process failures as unknown values with captured error details', async () => {
-		execFileMock.mockReturnValueOnce(createChildProcess('', 'git failed', 1))
+	it('returns process failures with captured stdout and stderr', async () => {
+		execFileMock.mockReturnValueOnce(createChildProcess('partial stdout', 'git failed', 1))
 
 		const [error, result] = await cloneRepo('project', 'https://example.com/repo.git', {
 			internalLog: StdioLog.None
@@ -180,6 +227,20 @@ describe('cloneRepo', () => {
 
 		expect(error).toBeInstanceOf(Error)
 		expect((error as Error).message).toBe('git failed\nCode 1')
-		expect(result.stderr).toBe('')
+		expect(result.stdout).toContain('partial stdout')
+		expect(result.stderr).toBe('git failed')
+	})
+
+	it('returns captured output when the process emits an error before closing', async () => {
+		const processError = new Error('failed to start git')
+		execFileMock.mockReturnValueOnce(createChildProcess('partial stdout', 'partial stderr', 0, false, processError))
+
+		const [error, result] = await cloneRepo('project', 'https://example.com/repo.git', {
+			internalLog: StdioLog.None
+		})
+
+		expect(error).toBe(processError)
+		expect(result.stdout).toBe('partial stdout')
+		expect(result.stderr).toBe('partial stderr')
 	})
 })
