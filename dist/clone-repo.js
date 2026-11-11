@@ -114,7 +114,7 @@ function resolvePath(folder, internalLogObj, recreateFolderIfExists) {
                     return [3 /*break*/, 6];
                 case 4:
                     error_2 = _b.sent();
-                    if (error_2.code !== 'ENOENT')
+                    if (typeof error_2 === 'object' && (error_2 === null || error_2 === void 0 ? void 0 : error_2.code) !== 'ENOENT')
                         throw error_2;
                     if (internalLogObj.show)
                         console.log('Creating', path, '...');
