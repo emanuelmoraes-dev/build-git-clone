@@ -64,6 +64,6 @@ async function clone (
 ```ts
 [error, { stdout, stderr }]
 ```
-* error: `null` on success; on failure, the value caught by the function (normally an `Error`). If a child process exits unsuccessfully, captured stderr is included in the error message.
+* error: `null` on success; on failure, the value caught by the function (normally an `Error`). If a child process exits unsuccessfully, captured stderr may be included in the error message when `stderrLog` is set to an including mode. Output already collected from earlier successful steps may still be present in the returned strings.
 * stdout: Internal log messages and captured stdout according to the selected options.
 * stderr: Captured stderr from child processes that completed successfully, according to `stderrLog`. Stderr from a process that exits unsuccessfully is reported through `error`, not appended to this field.
