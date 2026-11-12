@@ -1,13 +1,20 @@
 import { StdioLog } from './types';
 type StdioInherit = 'none' | 'stdin' | 'all';
-export declare function cloneRepo(folder: string, url: string, { git, stdioInherit, recreateFolderIfExists, stdoutLog, stderrLog, internalLog }?: {
-    git?: string | undefined;
-    stdioInherit?: StdioInherit | undefined;
-    recreateFolderIfExists?: boolean | undefined;
-    stdoutLog?: StdioLog | undefined;
-    stderrLog?: StdioLog | undefined;
-    internalLog?: StdioLog | undefined;
-}): Promise<[(unknown | null), {
+export type RecreateFolderOptions = {
+    enabled: false;
+} | {
+    enabled: true;
+    parent: string;
+};
+export interface CloneRepoOptions {
+    git?: string;
+    stdioInherit?: StdioInherit;
+    recreateFolderIfExists?: RecreateFolderOptions;
+    stdoutLog?: StdioLog;
+    stderrLog?: StdioLog;
+    internalLog?: StdioLog;
+}
+export declare function cloneRepo(folder: string, url: string, { git, stdioInherit, recreateFolderIfExists, stdoutLog, stderrLog, internalLog }?: CloneRepoOptions): Promise<[(unknown | null), {
     stdout: string;
     stderr: string;
 }]>;

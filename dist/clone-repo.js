@@ -48,6 +48,7 @@ var util_1 = require("util");
 var child_process_1 = require("child_process");
 var mkdir = (0, util_1.promisify)(fs_1.default.mkdir);
 var lstat = (0, util_1.promisify)(fs_1.default.lstat);
+var realpath = (0, util_1.promisify)(fs_1.default.realpath);
 function buildStdioLogObj(stdioLog, inheritAll) {
     return {
         include: (stdioLog === types_1.StdioLog.IncludeSilent ||
@@ -58,7 +59,7 @@ function buildStdioLogObj(stdioLog, inheritAll) {
     };
 }
 function cloneRepo(folder, url, _a) {
-    var _b = _a === void 0 ? {} : _a, _c = _b.git, git = _c === void 0 ? 'git' : _c, _d = _b.stdioInherit, stdioInherit = _d === void 0 ? 'none' : _d, _e = _b.recreateFolderIfExists, recreateFolderIfExists = _e === void 0 ? false : _e, _f = _b.stdoutLog, stdoutLog = _f === void 0 ? types_1.StdioLog.IncludeSilent : _f, _g = _b.stderrLog, stderrLog = _g === void 0 ? types_1.StdioLog.IncludeSilent : _g, _h = _b.internalLog, internalLog = _h === void 0 ? types_1.StdioLog.IncludeSilent : _h;
+    var _b = _a === void 0 ? {} : _a, _c = _b.git, git = _c === void 0 ? 'git' : _c, _d = _b.stdioInherit, stdioInherit = _d === void 0 ? 'none' : _d, _e = _b.recreateFolderIfExists, recreateFolderIfExists = _e === void 0 ? { enabled: false } : _e, _f = _b.stdoutLog, stdoutLog = _f === void 0 ? types_1.StdioLog.IncludeSilent : _f, _g = _b.stderrLog, stderrLog = _g === void 0 ? types_1.StdioLog.IncludeSilent : _g, _h = _b.internalLog, internalLog = _h === void 0 ? types_1.StdioLog.IncludeSilent : _h;
     return __awaiter(this, void 0, void 0, function () {
         var stdoutLogObj, stderrLogObj, internalLogObj, output, pathResponse, path, error_1;
         return __generator(this, function (_j) {
@@ -91,44 +92,66 @@ function cloneRepo(folder, url, _a) {
 exports.cloneRepo = cloneRepo;
 function resolvePath(folder, internalLogObj, recreateFolderIfExists) {
     return __awaiter(this, void 0, void 0, function () {
-        var stdout, path, stats, _a, error_2;
+        var stdout, workingDirectory, path, configuredParent, actualParent, error_2, destinationParent, stats, _a, error_3;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
                     stdout = '';
-                    path = (0, path_1.join)((0, path_1.resolve)(), folder);
-                    if (!recreateFolderIfExists)
+                    workingDirectory = (0, path_1.resolve)();
+                    path = (0, path_1.resolve)(workingDirectory, folder);
+                    if (!recreateFolderIfExists.enabled)
                         return [2 /*return*/, { path: path, stdout: stdout }];
+                    configuredParent = (0, path_1.resolve)(workingDirectory, recreateFolderIfExists.parent);
                     _b.label = 1;
                 case 1:
-                    _b.trys.push([1, 4, , 6]);
-                    return [4 /*yield*/, lstat(path)];
+                    _b.trys.push([1, 3, , 4]);
+                    return [4 /*yield*/, realpath(configuredParent)];
                 case 2:
+                    actualParent = _b.sent();
+                    return [3 /*break*/, 4];
+                case 3:
+                    error_2 = _b.sent();
+                    if (typeof error_2 === 'object' && (error_2 === null || error_2 === void 0 ? void 0 : error_2.code) !== 'ENOENT')
+                        throw error_2;
+                    if ((0, path_1.dirname)(path) !== configuredParent)
+                        throw new Error('Destination must be an immediate child of the configured parent directory');
+                    return [2 /*return*/, { path: path, stdout: stdout }];
+                case 4: return [4 /*yield*/, realpath((0, path_1.dirname)(path))];
+                case 5:
+                    destinationParent = _b.sent();
+                    if (actualParent !== destinationParent)
+                        throw new Error('Destination must be an immediate child of the configured parent directory');
+                    path = (0, path_1.join)(actualParent, (0, path_1.basename)(path));
+                    _b.label = 6;
+                case 6:
+                    _b.trys.push([6, 9, , 11]);
+                    return [4 /*yield*/, lstat(path)];
+                case 7:
                     stats = _b.sent();
                     if (!stats.isDirectory())
                         throw new Error("Destination exists and is not a directory: ".concat(path));
                     _a = stdout;
                     return [4 /*yield*/, (0, utils_1.recreate)(path, internalLogObj)];
-                case 3:
+                case 8:
                     stdout = _a + _b.sent();
-                    return [3 /*break*/, 6];
-                case 4:
-                    error_2 = _b.sent();
-                    if (typeof error_2 === 'object' && (error_2 === null || error_2 === void 0 ? void 0 : error_2.code) !== 'ENOENT')
-                        throw error_2;
+                    return [3 /*break*/, 11];
+                case 9:
+                    error_3 = _b.sent();
+                    if (typeof error_3 === 'object' && (error_3 === null || error_3 === void 0 ? void 0 : error_3.code) !== 'ENOENT')
+                        throw error_3;
                     if (internalLogObj.show)
                         console.log('Creating', path, '...');
                     if (internalLogObj.include)
                         stdout += "Creating ".concat(path, " ...\n");
                     return [4 /*yield*/, mkdir(path)];
-                case 5:
+                case 10:
                     _b.sent();
                     if (internalLogObj.show)
                         console.log(path, 'created.');
                     if (internalLogObj.include)
                         stdout += "".concat(path, " created.\n");
-                    return [3 /*break*/, 6];
-                case 6: return [2 /*return*/, { path: path, stdout: stdout }];
+                    return [3 /*break*/, 11];
+                case 11: return [2 /*return*/, { path: path, stdout: stdout }];
             }
         });
     });

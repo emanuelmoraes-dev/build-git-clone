@@ -179,14 +179,16 @@ describe('cloneRepo', () => {
 	})
 
 	it('recreates an existing destination only when explicitly requested', async () => {
-		const destination = join(testRoot, 'project')
+		const parent = join(testRoot, 'clones')
+		const destination = join(parent, 'project')
 		const existingFile = join(destination, 'remove-me.txt')
+		mkdirSync(parent)
 		mkdirSync(destination)
 		writeFileSync(existingFile, 'remove')
 		execFileMock.mockReturnValueOnce(createChildProcess('git stdout', ''))
 
-		const [error] = await cloneRepo('project', 'https://example.com/repo.git', {
-			recreateFolderIfExists: true,
+		const [error] = await cloneRepo('clones/project', 'https://example.com/repo.git', {
+			recreateFolderIfExists: { enabled: true, parent },
 			internalLog: StdioLog.None
 		})
 
@@ -196,6 +198,86 @@ describe('cloneRepo', () => {
 		expect(execFileMock).toHaveBeenCalledWith(
 			'git',
 			['clone', '--', 'https://example.com/repo.git', destination],
+			{ shell: false }
+		)
+	})
+
+	it('rejects a destination outside the configured parent without deleting anything', async () => {
+		const parent = join(testRoot, 'clones')
+		const outside = join(testRoot, 'keep')
+		const existingFile = join(outside, 'keep.txt')
+		mkdirSync(parent)
+		mkdirSync(outside)
+		writeFileSync(existingFile, 'keep')
+
+		const [error] = await cloneRepo('clones/../keep', 'https://example.com/repo.git', {
+			recreateFolderIfExists: { enabled: true, parent: 'clones' },
+			internalLog: StdioLog.None
+		})
+
+		expect(error).toBeInstanceOf(Error)
+		expect((error as Error).message).toContain('immediate child')
+		expect(existsSync(existingFile)).toBe(true)
+		expect(execFileMock).not.toHaveBeenCalled()
+		expect(spawnMock).not.toHaveBeenCalled()
+	})
+
+	it('uses lexical validation and does not create a missing parent directory', async () => {
+		const parent = join(testRoot, 'new', 'clones')
+		const destination = join(parent, 'project')
+		execFileMock.mockReturnValueOnce(createChildProcess('git stdout', ''))
+
+		const [error] = await cloneRepo(join('new', 'clones', 'project'), 'https://example.com/repo.git', {
+			recreateFolderIfExists: { enabled: true, parent: join('new', 'clones') },
+			internalLog: StdioLog.None
+		})
+
+		expect(error).toBeNull()
+		expect(existsSync(parent)).toBe(false)
+		expect(execFileMock).toHaveBeenCalledWith(
+			'git',
+			['clone', '--', 'https://example.com/repo.git', destination],
+			{ shell: false }
+		)
+	})
+
+	it('rejects lexical traversal when the configured parent does not exist', async () => {
+		execFileMock.mockReturnValueOnce(createChildProcess('git stdout', ''))
+
+		const [error] = await cloneRepo(join('new', '..', 'outside'), 'https://example.com/repo.git', {
+			recreateFolderIfExists: { enabled: true, parent: join('new', 'clones') },
+			internalLog: StdioLog.None
+		})
+
+		expect(error).toBeInstanceOf(Error)
+		expect((error as Error).message).toContain('immediate child')
+		expect(execFileMock).not.toHaveBeenCalled()
+	})
+
+	it('accepts an absolute parent path and rejects the parent itself as destination', async () => {
+		const parent = join(testRoot, 'clones')
+		mkdirSync(parent)
+
+		const [error] = await cloneRepo('clones', 'https://example.com/repo.git', {
+			recreateFolderIfExists: { enabled: true, parent },
+			internalLog: StdioLog.None
+		})
+
+		expect(error).toBeInstanceOf(Error)
+		expect((error as Error).message).toContain('immediate child')
+		expect(existsSync(parent)).toBe(true)
+		expect(execFileMock).not.toHaveBeenCalled()
+
+		execFileMock.mockReturnValueOnce(createChildProcess('git stdout', ''))
+		const [success] = await cloneRepo('clones/project', 'https://example.com/repo.git', {
+			recreateFolderIfExists: { enabled: true, parent },
+			internalLog: StdioLog.None
+		})
+
+		expect(success).toBeNull()
+		expect(execFileMock).toHaveBeenCalledWith(
+			'git',
+			['clone', '--', 'https://example.com/repo.git', join(parent, 'project')],
 			{ shell: false }
 		)
 	})
