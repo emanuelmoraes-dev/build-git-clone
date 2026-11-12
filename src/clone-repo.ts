@@ -1,13 +1,8 @@
-import fs from 'fs'
-import { basename, dirname, join, resolve } from 'path'
+import { mkdir, lstat, realpath } from 'node:fs/promises'
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
+import { spawn } from 'node:child_process'
 import { StdioLog, StdioLogObj } from './types'
 import { ChildProcessOutput, recreate, resolveChildProcess } from './utils'
-
-import { promisify } from 'util'
-import { execFile, spawn } from 'child_process'
-const mkdir = promisify(fs.mkdir)
-const lstat = promisify(fs.lstat)
-const realpath = promisify(fs.realpath)
 
 type StdioInherit = 'none' | 'stdin' | 'all'
 
@@ -90,7 +85,14 @@ async function resolvePath (
         if (typeof error === 'object' && (error as NodeJS.ErrnoException)?.code !== 'ENOENT')
             throw error
 
-        if (dirname(path) !== configuredParent)
+        const relativeDestination = relative(configuredParent, path)
+        const isImmediateChild = relativeDestination !== '' &&
+            relativeDestination !== '..' &&
+            !relativeDestination.startsWith(`..${sep}`) &&
+            !isAbsolute(relativeDestination) &&
+            dirname(relativeDestination) === '.'
+
+        if (!isImmediateChild)
             throw new Error('Destination must be an immediate child of the configured parent directory')
 
         return { path, stdout }
@@ -166,6 +168,6 @@ function execGitClone (
         ? spawn(git, args, { shell: false, stdio: 'inherit' })
         : stdioInherit === 'stdin'
             ? spawn(git, args, { shell: false, stdio: ['inherit', 'pipe', 'pipe'] })
-            : execFile(git, args, { shell: false })
+            : spawn(git, args, { shell: false })
     return resolveChildProcess(proc, stdoutLogObj, stderrLogObj, output, process.stdout, process.stderr)
 }

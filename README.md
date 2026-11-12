@@ -7,6 +7,8 @@ Clone a Git repository into a destination folder.
 npm install --save build-git-clone
 ```
 
+> **Node.js**: Version 1.1.0 requires Node.js 22 or newer. If you need to use an older Node.js version, stay on version 1.0.4.
+
 ## Quick Start
 Use `cloneRepo` for new code:
 

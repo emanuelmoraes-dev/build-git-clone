@@ -1,14 +1,13 @@
-import { ChildProcess, execFile, spawn } from 'child_process'
-import { EventEmitter } from 'events'
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs'
-import { tmpdir } from 'os'
-import { join } from 'path'
-import { PassThrough } from 'stream'
+import { ChildProcess, spawn } from 'node:child_process'
+import { EventEmitter } from 'node:events'
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { PassThrough } from 'node:stream'
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals'
 import { cloneRepo, StdioLog } from '../src'
 
-jest.mock('child_process', () => ({
-	execFile: jest.fn(),
+jest.mock('node:child_process', () => ({
 	spawn: jest.fn()
 }))
 
@@ -17,7 +16,6 @@ interface MockChildProcess extends EventEmitter {
 	stderr: PassThrough | null
 }
 
-const execFileMock = execFile as unknown as jest.Mock
 const spawnMock = spawn as jest.Mock
 
 function createChildProcess (
@@ -54,7 +52,6 @@ describe('cloneRepo', () => {
 		originalCwd = process.cwd()
 		testRoot = mkdtempSync(join(tmpdir(), 'build-git-clone-'))
 		process.chdir(testRoot)
-		execFileMock.mockReset()
 		spawnMock.mockReset()
 		jest.spyOn(console, 'log').mockImplementation(() => undefined)
 	})
@@ -69,18 +66,17 @@ describe('cloneRepo', () => {
         const stdoutWrite = jest.spyOn(process.stdout, 'write').mockImplementation(() => true)
 		const stderrWrite = jest.spyOn(process.stderr, 'write').mockImplementation(() => true)
 
-		execFileMock.mockReturnValueOnce(createChildProcess('git stdout', 'git stderr'))
+		spawnMock.mockReturnValueOnce(createChildProcess('git stdout', 'git stderr'))
 		const consoleLog = jest.spyOn(console, 'log')
 
 		const [error, result] = await cloneRepo('project', 'https://example.com/repo.git')
 
 		expect(error).toBeNull()
-		expect(execFileMock).toHaveBeenCalledWith(
+		expect(spawnMock).toHaveBeenCalledWith(
 			'git',
 			['clone', '--', 'https://example.com/repo.git', join(testRoot, 'project')],
 			{ shell: false }
 		)
-		expect(spawnMock).not.toHaveBeenCalled()
 		expect(result.stdout).toContain('git stdout')
 		expect(result.stdout).toContain('Cloning https://example.com/repo.git')
 		expect(result.stderr).toBe('git stderr')
@@ -105,7 +101,6 @@ describe('cloneRepo', () => {
 			['clone', '--', 'https://example.com/repo.git', join(testRoot, 'project')],
 			{ shell: false, stdio: ['inherit', 'pipe', 'pipe'] }
 		)
-        expect(execFileMock).not.toHaveBeenCalled()
 		expect(result.stdout).toBe('git stdout')
 		expect(result.stderr).toBe('git stderr')
 	})
@@ -115,7 +110,7 @@ describe('cloneRepo', () => {
 		const stderrWrite = jest.spyOn(process.stderr, 'write').mockImplementation(() => true)
         const consoleLog = jest.spyOn(console, 'log')
 
-		execFileMock.mockReturnValueOnce(createChildProcess('git stdout', 'git stderr', 0, false))
+		spawnMock.mockReturnValueOnce(createChildProcess('git stdout', 'git stderr', 0, false))
 
 		const [error, result] = await cloneRepo('project', 'https://example.com/repo.git', {
 			stdioInherit: 'none',
@@ -125,12 +120,11 @@ describe('cloneRepo', () => {
 		})
 
         expect(error).toBeNull()
-        expect(execFileMock).toHaveBeenCalledWith(
+		expect(spawnMock).toHaveBeenCalledWith(
             'git',
             ['clone', '--', 'https://example.com/repo.git', join(testRoot, 'project')],
             { shell: false }
         )
-        expect(spawnMock).not.toHaveBeenCalled()
 		expect(result.stdout).toContain('git stdout')
 		expect(result.stderr).toBe('git stderr')
         expect(stdoutWrite).toHaveBeenCalledWith('git stdout')
@@ -151,7 +145,6 @@ describe('cloneRepo', () => {
 			['clone', '--', 'https://example.com/repo.git', join(testRoot, 'project')],
 			{ shell: false, stdio: 'inherit' }
 		)
-		expect(execFileMock).not.toHaveBeenCalled()
 		expect(result.stdout).not.toContain('git stdout')
 		expect(result.stderr).toBe('')
 	})
@@ -161,7 +154,7 @@ describe('cloneRepo', () => {
 		const existingFile = join(destination, 'keep.txt')
 		mkdirSync(destination)
 		writeFileSync(existingFile, 'keep')
-		execFileMock.mockReturnValueOnce(createChildProcess('partial stdout', 'destination is not empty', 1))
+		spawnMock.mockReturnValueOnce(createChildProcess('partial stdout', 'destination is not empty', 1))
 
 		const [error, result] = await cloneRepo('project', 'https://example.com/repo.git', {
 			internalLog: StdioLog.None
@@ -169,7 +162,7 @@ describe('cloneRepo', () => {
 
 		expect(error).toBeInstanceOf(Error)
 		expect(existsSync(existingFile)).toBe(true)
-		expect(execFileMock).toHaveBeenCalledWith(
+		expect(spawnMock).toHaveBeenCalledWith(
 			'git',
 			['clone', '--', 'https://example.com/repo.git', destination],
 			{ shell: false }
@@ -185,7 +178,7 @@ describe('cloneRepo', () => {
 		mkdirSync(parent)
 		mkdirSync(destination)
 		writeFileSync(existingFile, 'remove')
-		execFileMock.mockReturnValueOnce(createChildProcess('git stdout', ''))
+		spawnMock.mockReturnValueOnce(createChildProcess('git stdout', ''))
 
 		const [error] = await cloneRepo('clones/project', 'https://example.com/repo.git', {
 			recreateFolderIfExists: { enabled: true, parent },
@@ -195,7 +188,7 @@ describe('cloneRepo', () => {
 		expect(error).toBeNull()
 		expect(existsSync(destination)).toBe(true)
 		expect(existsSync(existingFile)).toBe(false)
-		expect(execFileMock).toHaveBeenCalledWith(
+		expect(spawnMock).toHaveBeenCalledWith(
 			'git',
 			['clone', '--', 'https://example.com/repo.git', destination],
 			{ shell: false }
@@ -218,14 +211,13 @@ describe('cloneRepo', () => {
 		expect(error).toBeInstanceOf(Error)
 		expect((error as Error).message).toContain('immediate child')
 		expect(existsSync(existingFile)).toBe(true)
-		expect(execFileMock).not.toHaveBeenCalled()
 		expect(spawnMock).not.toHaveBeenCalled()
 	})
 
 	it('uses lexical validation and does not create a missing parent directory', async () => {
 		const parent = join(testRoot, 'new', 'clones')
 		const destination = join(parent, 'project')
-		execFileMock.mockReturnValueOnce(createChildProcess('git stdout', ''))
+		spawnMock.mockReturnValueOnce(createChildProcess('git stdout', ''))
 
 		const [error] = await cloneRepo(join('new', 'clones', 'project'), 'https://example.com/repo.git', {
 			recreateFolderIfExists: { enabled: true, parent: join('new', 'clones') },
@@ -234,15 +226,36 @@ describe('cloneRepo', () => {
 
 		expect(error).toBeNull()
 		expect(existsSync(parent)).toBe(false)
-		expect(execFileMock).toHaveBeenCalledWith(
+		expect(spawnMock).toHaveBeenCalledWith(
 			'git',
 			['clone', '--', 'https://example.com/repo.git', destination],
 			{ shell: false }
 		)
 	})
 
+	it('accepts case-insensitive parent paths on Windows', async () => {
+		if (process.platform !== 'win32')
+			return
+
+		const parent = join('missing', 'clones')
+		const destination = join('MISSING', 'CLONES', 'project')
+		spawnMock.mockReturnValueOnce(createChildProcess('git stdout', ''))
+
+		const [error] = await cloneRepo(destination, 'https://example.com/repo.git', {
+			recreateFolderIfExists: { enabled: true, parent },
+			internalLog: StdioLog.None
+		})
+
+		expect(error).toBeNull()
+		expect(spawnMock).toHaveBeenCalledWith(
+			'git',
+			['clone', '--', 'https://example.com/repo.git', join(testRoot, destination)],
+			{ shell: false }
+		)
+	})
+
 	it('rejects lexical traversal when the configured parent does not exist', async () => {
-		execFileMock.mockReturnValueOnce(createChildProcess('git stdout', ''))
+		spawnMock.mockReturnValueOnce(createChildProcess('git stdout', ''))
 
 		const [error] = await cloneRepo(join('new', '..', 'outside'), 'https://example.com/repo.git', {
 			recreateFolderIfExists: { enabled: true, parent: join('new', 'clones') },
@@ -251,7 +264,7 @@ describe('cloneRepo', () => {
 
 		expect(error).toBeInstanceOf(Error)
 		expect((error as Error).message).toContain('immediate child')
-		expect(execFileMock).not.toHaveBeenCalled()
+		expect(spawnMock).not.toHaveBeenCalled()
 	})
 
 	it('accepts an absolute parent path and rejects the parent itself as destination', async () => {
@@ -266,16 +279,16 @@ describe('cloneRepo', () => {
 		expect(error).toBeInstanceOf(Error)
 		expect((error as Error).message).toContain('immediate child')
 		expect(existsSync(parent)).toBe(true)
-		expect(execFileMock).not.toHaveBeenCalled()
+		expect(spawnMock).not.toHaveBeenCalled()
 
-		execFileMock.mockReturnValueOnce(createChildProcess('git stdout', ''))
+		spawnMock.mockReturnValueOnce(createChildProcess('git stdout', ''))
 		const [success] = await cloneRepo('clones/project', 'https://example.com/repo.git', {
 			recreateFolderIfExists: { enabled: true, parent },
 			internalLog: StdioLog.None
 		})
 
 		expect(success).toBeNull()
-		expect(execFileMock).toHaveBeenCalledWith(
+		expect(spawnMock).toHaveBeenCalledWith(
 			'git',
 			['clone', '--', 'https://example.com/repo.git', join(parent, 'project')],
 			{ shell: false }
@@ -283,7 +296,7 @@ describe('cloneRepo', () => {
 	})
 
 	it('writes displayed stdout and stderr to their corresponding process streams', async () => {
-		execFileMock.mockReturnValueOnce(createChildProcess('git stdout', 'git stderr'))
+		spawnMock.mockReturnValueOnce(createChildProcess('git stdout', 'git stderr'))
 		const stdoutWrite = jest.spyOn(process.stdout, 'write').mockImplementation(() => true)
 		const stderrWrite = jest.spyOn(process.stderr, 'write').mockImplementation(() => true)
 
@@ -301,7 +314,7 @@ describe('cloneRepo', () => {
 	})
 
 	it('returns process failures with captured stdout and stderr', async () => {
-		execFileMock.mockReturnValueOnce(createChildProcess('partial stdout', 'git failed', 1))
+		spawnMock.mockReturnValueOnce(createChildProcess('partial stdout', 'git failed', 1))
 
 		const [error, result] = await cloneRepo('project', 'https://example.com/repo.git', {
 			internalLog: StdioLog.None
@@ -315,7 +328,7 @@ describe('cloneRepo', () => {
 
 	it('returns captured output when the process emits an error before closing', async () => {
 		const processError = new Error('failed to start git')
-		execFileMock.mockReturnValueOnce(createChildProcess('partial stdout', 'partial stderr', 0, false, processError))
+		spawnMock.mockReturnValueOnce(createChildProcess('partial stdout', 'partial stderr', 0, false, processError))
 
 		const [error, result] = await cloneRepo('project', 'https://example.com/repo.git', {
 			internalLog: StdioLog.None

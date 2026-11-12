@@ -1,7 +1,5 @@
-/// <reference types="node" />
-/// <reference types="node" />
+import { ChildProcess } from 'node:child_process';
 import { StdioLogObj } from './types';
-import { ChildProcess } from 'child_process';
 export interface ChildProcessOutput {
     stdout: string;
     stderr: string;

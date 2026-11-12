@@ -1,11 +1,7 @@
-import fs from 'fs'
-import rimraf from 'rimraf'
+import { mkdir } from 'node:fs/promises'
+import { ChildProcess } from 'node:child_process'
+import { rimraf as rmdir } from 'rimraf'
 import { StdioLogObj } from './types'
-
-import { promisify } from 'util'
-import { ChildProcess } from 'child_process'
-const mkdir = promisify(fs.mkdir)
-const rmdir = promisify(rimraf)
 
 export interface ChildProcessOutput {
 	stdout: string

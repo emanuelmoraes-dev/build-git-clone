@@ -1,11 +1,8 @@
-import fs from 'fs'
-import { join, resolve } from 'path'
+import { mkdir } from 'node:fs/promises'
+import { join, resolve } from 'node:path'
+import { spawn } from 'node:child_process'
 import { StdioLog, StdioLogObj } from './types'
 import { ChildProcessOutput, resolveChildProcess, recreate } from './utils'
-import { spawn } from 'child_process'
-
-import { promisify } from 'util'
-const mkdir = promisify(fs.mkdir)
 
 /**
  * @deprecated will be removed in v2.

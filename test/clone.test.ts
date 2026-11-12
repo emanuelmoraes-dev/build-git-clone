@@ -1,13 +1,13 @@
-import { spawn, ChildProcess } from 'child_process'
-import { EventEmitter } from 'events'
-import { mkdtempSync, rmSync } from 'fs'
-import { tmpdir } from 'os'
-import { join } from 'path'
-import { PassThrough } from 'stream'
+import { spawn, ChildProcess } from 'node:child_process'
+import { EventEmitter } from 'node:events'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { PassThrough } from 'node:stream'
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals'
 import { clone, StdioLog } from '../src'
 
-jest.mock('child_process', () => ({
+jest.mock('node:child_process', () => ({
 	spawn: jest.fn()
 }))
 

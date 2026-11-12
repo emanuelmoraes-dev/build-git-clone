@@ -7,4 +7,4 @@ var StdioLog;
     StdioLog[StdioLog["IncludeShow"] = 1] = "IncludeShow";
     StdioLog[StdioLog["Show"] = 2] = "Show";
     StdioLog[StdioLog["None"] = 3] = "None";
-})(StdioLog = exports.StdioLog || (exports.StdioLog = {}));
+})(StdioLog || (exports.StdioLog = StdioLog = {}));
