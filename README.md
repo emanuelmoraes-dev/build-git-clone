@@ -1,69 +1,137 @@
 # build-git-clone (ts/js)
-Clone Git repositories into a destination folder, with an optional post-clone command.
+
+Clone a Git repository into a destination folder.
 
 ## Install
 ```sh
 npm install --save build-git-clone
 ```
 
+> **Node.js**: Version 1.1.0 requires Node.js 22 or newer. If you need to use an older Node.js version, stay on version 1.0.4.
+
 ## Quick Start
-```ts
-import { clone } from 'build-git-clone'
+Use `cloneRepo` for new code:
 
-clone('build-git-clone', 'https://github.com/emanuelmoraes-dev/build-git-clone.git')
+```ts
+import { cloneRepo } from 'build-git-clone'
+
+const [error, result] = await cloneRepo(
+    'build-git-clone',
+    'https://github.com/emanuelmoraes-dev/build-git-clone.git'
+)
+
+if (error) {
+    console.error(error)
+} else {
+    console.log(result.stdout)
+}
 ```
 
-## Import
+## Functions
+
+### `cloneRepo(folder, url, options?)`
+
+The current API for cloning a repository. It does not run a post-clone command.
+
 ```ts
-import { clone, StdioLog } from 'build-git-clone'
+cloneRepo(folder: string, url: string, options?: {
+    git?: string
+    stdioInherit?: 'none' | 'stdin' | 'all'
+    recreateFolderIfExists?: { enabled: false } | { enabled: true, parent: string }
+    stdoutLog?: StdioLog
+    stderrLog?: StdioLog
+    internalLog?: StdioLog
+}): Promise<[unknown | null, { stdout: string, stderr: string }]>
 ```
 
-## API
+Arguments:
+
+* `folder`: Destination folder, relative to the current working directory. By default, the library does not remove or recreate it; Git handles the destination and reports an error if it cannot clone there.
+* `url`: Repository URL passed to Git.
+* `git`: Git executable to run. Defaults to `git`.
+* `recreateFolderIfExists`: Defaults to `{ enabled: false }`. To remove and recreate an existing destination, set `{ enabled: true, parent: path }`. The `parent` path can be absolute or relative to the current working directory. If it exists, its real path must match the destination's real immediate parent. If it does not exist, the library only checks lexically that the destination is its immediate child; it does not create the parent, and Git may create the missing ancestors or return an error. The destination itself is removed recursively when it already exists, so only use a trusted parent directory dedicated to clones. Do not derive `parent` from the same untrusted input used for `folder`.
+
+For example, with an existing `./clones` directory, a repository destination inside it can be recreated like this:
+
 ```ts
-async function clone (
-    folder: string,
-    url: string,
-    afterCommand: string | null = null,
-    options: object = {
-		git = 'git',
-		stdioInherit = true,
-		stdoutLog = StdioLog.IncludeShow,
-		stderrLog = StdioLog.IncludeShow,
-		internalLog = StdioLog.IncludeShow
-	}
-): Promise<[
-    (Error | null),
-    { stdout: string, stderr: string }
-]>
+await cloneRepo('clones/project', repositoryUrl, {
+    recreateFolderIfExists: { enabled: true, parent: 'clones' }
+})
 ```
 
-### Arguments
-* folder: destination folder, relative to the current working directory. If it already exists, it is removed and recreated before cloning.
-* url: repository url
-* afterCommand: shell command to execute within the cloned repository (optional). Only pass commands trusted by your application; do not build this value from untrusted input.
-* options: configuration options (optional)
-    * git: path to git binary (optional)
-    * stdioInherit: If true, stdin, stdout, and stderr are inherited by the parent process; child-process output is not captured or routed by the logging options. If false, output is captured and handled according to the logging options.
-    * stdoutLog: Defines what should be done with the standard output of the executed commands (optional)
-        * StdioLog.IncludeShow: Include in the return (stdout) and write to the terminal's stdout
-        * StdioLog.IncludeSilent: ONLY includes in the return (stdout) the standard output of the executed commands
-        * StdioLog.Show: ONLY write to the terminal's stdout
-        * StdioLog.None: Does nothing with standard output from commands executed
-    * stderrLog: Defines what should be done with the standard error output of the executed commands (optional)
-        * StdioLog.IncludeShow: Include in the return (stderr) and write to the terminal's stdout
-        * StdioLog.IncludeSilent: ONLY includes in the return (stderr) the standard error output of the executed commands
-        * StdioLog.Show: ONLY write to the terminal's stdout
-        * StdioLog.None: Does nothing with standard error output from commands executed
-    * internalLog: Defines what should be done with the logs generated internally (optional)
-        * StdioLog.IncludeShow: Include in the return (stdout) write to the terminal's stdout the logs generated internally
-        * StdioLog.IncludeSilent: ONLY includes in the return (stdout) the logs generated internally
-        * StdioLog.Show: ONLY write to the terminal's stdout the logs generated internally
-        * StdioLog.None: Does nothing with the logs generated internally
+* `stdioInherit`: Controls which standard streams are inherited by Git. Defaults to `'none'`.
+    * `'none'`: Inherit no streams. Git output is captured and handled according to `stdoutLog` and `stderrLog`.
+    * `'stdin'`: Inherit stdin for interactive prompts; capture stdout and stderr for logging and the return value.
+    * `'all'`: Inherit stdin, stdout, and stderr. Git output goes directly to the parent terminal and is not captured in the returned `stdout` or `stderr`.
+* `stdoutLog`, `stderrLog`: Control how captured Git output is handled. Both default to `StdioLog.IncludeSilent`.
+* `internalLog`: Controls the library's own status messages. Defaults to `StdioLog.IncludeSilent`.
 
-### Return  
+`StdioLog` values:
+
+* `StdioLog.IncludeSilent`: Include the text in the returned string without printing it to the console.
+* `StdioLog.IncludeShow`: Include the text in the returned string and print it to the console.
+* `StdioLog.Show`: Print the text to the console without including it in the returned string.
+* `StdioLog.None`: Do not print or include the text.
+
+For `cloneRepo`, displayed stdout is written to `process.stdout`, and displayed stderr is written to `process.stderr`. Internal status messages are written to `process.stdout`. With the defaults, captured Git output and internal status messages are included in the returned strings but are not printed to the console. To allow interactive prompts while capturing and displaying Git output:
+
+```ts
+import { cloneRepo, StdioLog } from 'build-git-clone'
+
+const [error, result] = await cloneRepo('project', repositoryUrl, {
+    stdioInherit: 'stdin',
+    stdoutLog: StdioLog.IncludeShow,
+    stderrLog: StdioLog.IncludeShow
+})
+```
+
+### `clone(folder, url, afterCommand?, options?)` (deprecated)
+
+This is the legacy API and will be removed in v2. It remains available in this release to avoid breaking existing callers. New code should use `cloneRepo`.
+
+The legacy defaults are preserved: `stdioInherit` defaults to `true`, and the log options default to `StdioLog.IncludeShow`. When `stdioInherit` is `true`, Git's standard streams are inherited by the terminal, so its stdout and stderr are not captured in the returned strings. Set it to `false` to capture output according to the log options.
+
+For compatibility, the legacy function writes both displayed stdout and stderr to `process.stdout`. The newer `cloneRepo` function writes each stream to its corresponding process stream.
+
+The legacy function runs Git from the destination folder and clones into `.`. As a result, Git's progress output may say `Cloning into '.'`; `cloneRepo` passes the destination folder to Git, so its progress output may name that destination instead. These messages are generated by Git and may vary between Git versions; do not rely on their exact wording or parse them as a stable format.
+
+`afterCommand` is an optional shell command executed in the cloned repository. It is retained for compatibility, but should only contain a command explicitly trusted by the application. Do not pass user-controlled input to it.
+
+The legacy function also accepts `git`, `stdioInherit`, `stdoutLog`, `stderrLog`, and `internalLog` in its options object. Its return value has the same shape as `cloneRepo`:
+
+```ts
+const [error, { stdout, stderr }] = await clone(folder, url, afterCommand, options)
+```
+
+### Migrating from `clone` to `cloneRepo`
+
+`cloneRepo` is not a drop-in replacement for the deprecated function. Review these behavior differences when migrating:
+
+* **Standard streams:** The legacy `stdioInherit: true` maps to `stdioInherit: 'all'`; `false` maps to `'none'`. Use `'stdin'` when Git needs interactive input while stdout and stderr should remain captured. In `'all'` mode, `cloneRepo` may return its internal status messages, but it does not display them, even if `internalLog` is set to `StdioLog.IncludeShow`.
+* **Logging defaults:** The legacy function defaults to `StdioLog.IncludeShow`; `cloneRepo` defaults to `StdioLog.IncludeSilent`. Set `stdoutLog`, `stderrLog`, and `internalLog` explicitly if you want output displayed as well as returned.
+* **Displayed stderr:** The legacy function writes both displayed stdout and stderr to `process.stdout`. `cloneRepo` writes stderr to `process.stderr`; there is no option to restore the legacy routing.
+* **Existing destination:** The legacy function removes and recreates an existing destination. `cloneRepo` leaves it alone by default; to recreate it, set `recreateFolderIfExists: { enabled: true, parent: trustedParentPath }`. The parent must resolve to the destination's immediate parent.
+* **Post-clone commands:** `cloneRepo` has no `afterCommand`. Run the command separately after cloning succeeds, with the cloned folder as its working directory.
+* **Failed processes:** `cloneRepo` returns captured stdout and stderr in the result even when a child process fails. The legacy function does not include that failed process's captured output in the returned strings; captured stderr may instead be included in `error` when `stderrLog` includes output.
+* **Git progress text:** The legacy function clones into `.` from inside the destination, while `cloneRepo` passes the destination path to Git. Git's progress message may therefore differ; its exact wording is not stable.
+
+## Input Handling
+
+If your application accepts repository URLs from users, validate them according to the hosts and protocols your application intends to support.
+
+The deprecated `afterCommand` parameter executes a shell command in the cloned repository. Only provide commands trusted by your application; do not build this value from untrusted input.
+
+## Return Value
+
+Both functions return a tuple:
+
 ```ts
 [error, { stdout, stderr }]
 ```
-* error: `null` on success; on failure, the value caught by the function (normally an `Error`). If a child process exits unsuccessfully, captured stderr may be included in the error message when `stderrLog` is set to an including mode. Output already collected from earlier successful steps may still be present in the returned strings.
-* stdout: Internal log messages and captured stdout according to the selected options.
-* stderr: Captured stderr from child processes that completed successfully, according to `stderrLog`. Stderr from a process that exits unsuccessfully is reported through `error`, not appended to this field.
+
+`error` is `null` when the operation succeeds and contains the failure otherwise. The tuple shape is the same for both functions, but captured output on failure differs:
+
+* `cloneRepo` keeps captured stdout and stderr from a child process in the returned object, even if that process fails.
+* The deprecated `clone` does not add output from the child process that failed to the returned strings. Its error may contain that process's stderr when `stderrLog` is set to an including mode. Output already collected from earlier successful steps may still be present in the returned strings.
+
+For both functions, output sent directly to the terminal using inherited streams cannot be captured.

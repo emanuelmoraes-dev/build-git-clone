@@ -1,12 +1,12 @@
-import fs from 'fs'
-import { join, resolve } from 'path'
+import { mkdir } from 'node:fs/promises'
+import { join, resolve } from 'node:path'
+import { spawn } from 'node:child_process'
 import { StdioLog, StdioLogObj } from './types'
-import { resolveChildProcess, recreate } from './utils'
-import { spawn } from 'child_process'
+import { ChildProcessOutput, resolveChildProcess, recreate } from './utils'
 
-import { promisify } from 'util'
-const mkdir = promisify(fs.mkdir)
-
+/**
+ * @deprecated will be removed in v2.
+ */
 function getStdioLogObj (stdioLog: StdioLog): StdioLogObj {
     return {
         include: (
@@ -21,6 +21,9 @@ function getStdioLogObj (stdioLog: StdioLog): StdioLogObj {
     }
 }
 
+/**
+ * @deprecated will be removed in v2. use `cloneRepo` instead.
+ */
 export async function clone (
 	folder: string,
 	url: string,
@@ -91,6 +94,9 @@ export async function clone (
 	}
 }
 
+/**
+ * @deprecated will be removed in v2.
+ */
 async function cloneCommand (
 	git: string,
 	url: string,
@@ -101,6 +107,7 @@ async function cloneCommand (
 ): Promise<{ stdout: string, stderr: string }> {
 	const stdoutLogObj = getStdioLogObj(stdoutLog)
 	const stderrLogObj = getStdioLogObj(stderrLog)
+	const output: ChildProcessOutput = { stdout: '', stderr: '' }
 	
 	const options = stdioInherit
 		? { shell: false, cwd: dest, stdio: 'inherit' as const }
@@ -108,9 +115,13 @@ async function cloneCommand (
 
 	const proc = spawn(git, ['clone', '--', url, '.'], options)
 
-	return resolveChildProcess(proc, stdoutLogObj, stderrLogObj)
+	await resolveChildProcess(proc, stdoutLogObj, stderrLogObj, output)
+	return output
 }
 
+/**
+ * @deprecated will be removed in v2.
+ */
 async function execAnyCommand (
 	command: string,
 	cwd: string,
@@ -120,6 +131,7 @@ async function execAnyCommand (
 ): Promise<{ stdout: string, stderr: string }> {
 	const stdoutLogObj = getStdioLogObj(stdoutLog)
 	const stderrLogObj = getStdioLogObj(stderrLog)
+	const output: ChildProcessOutput = { stdout: '', stderr: '' }
 
 	let program: string
 	let args: Array<string>
@@ -142,5 +154,6 @@ async function execAnyCommand (
 
 	const proc = spawn(program, args, options)
 
-	return resolveChildProcess(proc, stdoutLogObj, stderrLogObj)
+	await resolveChildProcess(proc, stdoutLogObj, stderrLogObj, output)
+	return output
 }

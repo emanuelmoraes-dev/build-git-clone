@@ -1,13 +1,13 @@
-import { spawn, ChildProcess } from 'child_process'
-import { EventEmitter } from 'events'
-import { mkdtempSync, rmSync } from 'fs'
-import { tmpdir } from 'os'
-import { join } from 'path'
-import { PassThrough } from 'stream'
+import { spawn, ChildProcess } from 'node:child_process'
+import { EventEmitter } from 'node:events'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { PassThrough } from 'node:stream'
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals'
 import { clone, StdioLog } from '../src'
 
-jest.mock('child_process', () => ({
+jest.mock('node:child_process', () => ({
 	spawn: jest.fn()
 }))
 
@@ -41,7 +41,7 @@ function createChildProcess (
 	return child as unknown as ChildProcess
 }
 
-describe('clone', () => {
+describe('legacy clone', () => {
 	let originalCwd: string
 	let testRoot: string
 
@@ -174,13 +174,15 @@ describe('clone', () => {
 	it('returns a process failure in the error tuple element', async () => {
 		spawnMock.mockReturnValueOnce(createChildProcess('', 'clone failed', 1))
 
-		const [error] = await clone('project', 'https://example.com/repo.git', null, {
+		const [error, result] = await clone('project', 'https://example.com/repo.git', null, {
 			stdioInherit: false,
 			internalLog: StdioLog.None
 		})
 
 		expect(error).toBeInstanceOf(Error)
 		expect(error?.message).toBe('clone failed\nCode 1')
+		expect(result.stdout).toBe('')
+		expect(result.stderr).toBe('')
 	})
 
 	it('preserves non-Error values thrown by dependencies', async () => {
